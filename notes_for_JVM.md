@@ -33,7 +33,7 @@
     为了便于直观地监控Java应用中的堆的情况,cpu占用情况,以及GC中的分代情况等,Oracle提供了多种工具,比如Java VisualVM.
 
 
-####links:
+#### links:
 
     1   https://javapapers.com/java/java-garbage-collection-introduction/
     2   https://javapapers.com/java/how-java-garbage-collection-works/
