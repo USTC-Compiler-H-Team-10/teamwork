@@ -1,6 +1,6 @@
 # Notes for [Java Garbage Collection](https://javapapers.com/java/how-java-garbage-collection-works/)
 
-##1.初步认识 JVM
+## 1.初步认识 JVM
 
 #### 1.1 分代GC
     eden space(伊甸园空间)
