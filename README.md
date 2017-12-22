@@ -1,20 +1,14 @@
-# 项目介绍
+# Introduction
 This teamwork project is one of the [projects](https://github.com/ustc-compiler/2017fall-student-teamworks) for the class [USTC-Compilter-H](http://staff.ustc.edu.cn/~yuzhang/compiler/), which is focused on the mechanism of the Java Garbage Collection and researches on kinds of  GC algorithms.
-
-### 1. 项目链接
-
-#### [项目主页](https://github.com/USTC-Compiler-H-Team-10/teamwork.git)
-#### ssh key 
-git@github.com:USTC-Compiler-H-Team-10/teamwork.git
-
-### 2. 成员信息
+# 项目介绍
+本项目是中国科大[编译原理(h)](http://staff.ustc.edu.cn/~yuzhang/compiler/)课程中[团队项目](https://github.com/ustc-compiler/2017fall-student-teamworks)中的一个,针对的是“Java Garbage Collection 与各种GC算法”。
+### 1. 成员信息
 | job  | name | GitHub         |
 | ---- | ---- | -------------- |
 | 队长   | 齐炜祯  | qiweizhen      |
 | 成员   | 黄一凡  | GhostScreaming |
 | 成员   | 金泽文  | leo2589        |
-
-### 3. 项目简介
+### 2. 项目简介
 本组研究的课题为“Java Garbage Collection 与各种GC算法”。
 WikiPedia 对 Garbage Collection 的定义如下:
 
