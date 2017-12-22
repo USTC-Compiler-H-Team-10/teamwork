@@ -1,5 +1,5 @@
 # 项目介绍
-The teamwork project for USTC-Compilter-H, which is focused on the mechanism of the Java Garbage Collection and researches on kinds of  GC algorithms.
+This teamwork project is one of the [projects](https://github.com/ustc-compiler/2017fall-student-teamworks) for the class [USTC-Compilter-H](http://staff.ustc.edu.cn/~yuzhang/compiler/), which is focused on the mechanism of the Java Garbage Collection and researches on kinds of  GC algorithms.
 
 ### 1. 项目链接
 
