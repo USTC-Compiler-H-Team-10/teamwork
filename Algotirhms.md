@@ -113,6 +113,7 @@ if(obj.tag==COPIED)
 **缺点**
 emmm。是GC标记-清除法和GC复制法的结合，所以……优缺点也就是他们俩的优缺点。
 ###GC标记-压缩法
+####V1 Lisp2算法
 **核心思想**
 把堆进行压缩，把所有活的对象都放放在堆的一边，空闲的内存空间拼接在一起在堆的另一端。这样的好处是非常显而易见的。过程分为三步，需要扫描整个堆空间三次，因此会比其他的GC算法都要慢。
 标记部分和GC标记-清除算法中的标记一样。所以不再写。
@@ -168,3 +169,68 @@ move_obj(){
 2. 不会产生碎片化
 **缺点**
 花费时间太长。需要扫描整个堆三遍。因此吞吐量很低。
+需要给每一个对象补充额外的一个域forwarding来记录移动后的位置。
+####V2 1964年Saunders 的Two-FInger压缩算法
+Robert A. Saunders, The LISP system for the Q-32 computer. In THe Programming Language LISP: ITs Operation and Applications, Berkeley, E.C. and Bobrow, D.G., Eds., Infomation International, Cambridge, Mass., p.220-231, 1964
+**核心思路**
+这个算法有一个很强的前提，就是在着一块堆中的所有单元要一样大。就是说，里面的无论是死的还是活得对象或者空闲块都必须要一样大（空闲块可以是若干个一样大的和）。针对Lisp2算法中，需要扫描三遍吞吐量小，以及需要始终保存每个活对象的Forwarding域的问题，Two-Finget算法给予解决。虽然它要求所有的对象的大小都一样这个前提太严格，但是在GC标记-删除法中，BiBOP方法，把统一大小的对象安排在同一个分块中，就可以使用Two-finger算法。
+**算法**
+解决的方法很朴素，就是说，因为对象的大小都一样了，所以只遍历两遍堆。第一遍移动，把活对象搬到前面的空闲块。第二遍更改指针，指向现在的新的对象的位置。
+**优点**
+就算核心思路中解决的Lisp2的几个缺点。
+**缺点**
+1. 可以看到，搬运的过程中没有考虑过引用的父子关系，这样，对cache缓存就不适合。
+2. 前提限制条件太严格，需要所有对象一样大。但是在BiBOP的前提下可以解决。
+####V3 1967年B.K. Haddon和W.M. Waite的表格算法
+**核心想法**
+在Lisp2算法中，因为要记录移动后的位置，所以要给每个对象补充额外的forwarding域；而Two-finger算法中对这两个问题的解决并不好。因为限定了大小，而且对象之间的关系被打乱了，对cache很不友好。所以，表格算法利用空闲的块来记录所需要的信息，并在GC之后放弃这些块，从而不需要额外的域，而且保存了对象之间的引用关系。
+**算法**
+1. 移动对象群
+```
+move_obj(){
+	scan = $free = $heap_start
+	size = 0
+	while(scan < $heap_end)
+		while(scan.mark == FALSE)
+			size +=scan.size
+			scan += scan.size
+		live = scan
+		while(scan.mark == TRUE)
+			scan +=scan.size
+		slide_objs_and_make_bt(scan, $free, live, size)
+		$free += (scan - live)
+}
+其中，slide_objs_and_make_bt()是在构建间隙表格和移动间隙表格。
+slide_objs_and_make_bt(){
+	在一块对象群后创建间隙表格
+	间隙表格记录对象群的首地址和左边空闲分块大小
+	如果后面搬运的对象群要盖住这个间隙表格，那么让所有已有对象表格移动到后面空闲的地方去，然后做相同的操作
+}
+
+2. 更新指针
+adjust_ptr(){
+	for( r: roots)
+		*r = new address(*r)
+	scan = $heap_start
+	while(scan < $free)
+		scan.mark = FALSE
+		for(child : children(*child))
+			*child = new_address(*child)
+		scan +=scan.size
+}
+其中，new_address()是为了得到每个对象的移动后的位置，去查询间隙表格，那么它的所在的对象群的间隙表格中，原来的起始位置-左边的空内存的大小就等于向左移动了的距离数。
+new_address(obj){
+	best_entry = new_bt_entry(0,0)
+	for(enter : break_table)
+		if(entry.address <= obj && $best_entry.address <entry.address)
+			best_entry = entry
+	return obj-best_entry.size
+}
+	
+```
+**优点**
+1. 不需要额外的forwarding域
+2. 维护了对象之间的位置关系，对cache友好。
+**缺点**
+维持间隙表格需要很高的代价。
+###增量式垃圾回收
