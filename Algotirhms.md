@@ -113,3 +113,58 @@ if(obj.tag==COPIED)
 **缺点**
 emmm。是GC标记-清除法和GC复制法的结合，所以……优缺点也就是他们俩的优缺点。
 ###GC标记-压缩法
+**核心思想**
+把堆进行压缩，把所有活的对象都放放在堆的一边，空闲的内存空间拼接在一起在堆的另一端。这样的好处是非常显而易见的。过程分为三步，需要扫描整个堆空间三次，因此会比其他的GC算法都要慢。
+标记部分和GC标记-清除算法中的标记一样。所以不再写。
+压缩部分：
+```
+三个步骤：
+compaction_phase(){
+	set_forwarding_ptr()
+	adjust_ptr()
+	move_obj()
+}
+```
+第一步是设定forwarding指针。一开始全都设置成NULL。扫描完成后，把活对象的forwarding指向压缩后那个对象应该在的位置。
+```
+set_forwarding_ptr(){
+	scan = new_address = $heap_start
+	while(scan < $heap_end)
+		if(scan_mark = true)
+			scan.forwarding = new_address
+			new_address += scan.size
+		scan += scan.size
+```
+第二步是更新各个对象的指针。
+```
+adjust_ptr(){
+	for(r:roots)
+		*r = (*r).forwarding
+	
+	scan = $heap_start
+	while(scan < heap_end)
+		if(scan.mark == TRUE)
+			for(child : children(scan))
+				*child = (*child).forwarding
+		scan += scan.size
+}
+```
+第三步是再次遍历整个堆，把活的对象移动到forwarding的该在的位置。
+```
+move_obj(){
+	scan = $free = $heap_start
+	while(scan < $heap_end)
+		if(scan..mark = TRUE)
+			new_address = scan.forwarding
+			copy_data(new_address, scan, scan.size)
+			new_address.forwarding = NULL
+			new_address.mark = FLASE
+			$free += new_address.size
+			scan += scan,size
+}
+```
+**优点**
+1. 堆利用率高
+2. 不会产生碎片化
+**缺点**
+花费时间太长。需要扫描整个堆三遍。因此吞吐量很低。
