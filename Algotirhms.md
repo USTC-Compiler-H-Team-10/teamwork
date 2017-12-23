@@ -234,3 +234,94 @@ new_address(obj){
 **缺点**
 维持间隙表格需要很高的代价。
 ###增量式垃圾回收
+**核心想法**
+因为我们知道，在进行GC的过程中，对象被搬运，引用指针在变化，等等，都使得我们正在运行的程序（称为Mutator）需要先暂停下来，等待GC完成后才能继续跑。而GC是一个比较慢代价比较大的过程，所以有时候，这个暂停对于我们的mutator是不能忍受的。因此，需要能让GC也是可以中断的，GC和mutator之间可以交替进行。
+####V1 1978年Dijkstra的三色标记算法
+**核心想法**
+就像图的深度有限遍历，可以用颜色记录每个node的状态，是否是已经遍历过了，正在遍历还是还没遍历过，GC中也可以把一个对象有没有GC处理过使用颜色标记。在这个想法的支持下，可以适用所有的搜索型GC算法，实现增量GC。下面算法以GC标记-清除法为例使用三色标记法实现增量GC
+**算法**
+用白色标记还没搜索过的对象
+灰色标记正在搜索的对象
+黑色标记搜索完成的对象。
+分为根查找阶段、标记阶段、清除阶段。在查找阶段把根引用的对象标记为灰色。标记阶段查找到灰色对象，把它引用的对象涂成灰色；查找结束后涂成黑色。清除阶段，查找堆，把白色对象连到空闲链表，把黑色对象再重新恢复成白色。
+用gc_phase变量判断我们现在应该进入哪个状态。根查找阶段-mutator-一部分一部分地进行标记阶段-mutator-一部分一部分地进行gc清除阶段-mutator。
+```
+incremental_gc(){
+	case $gc_phase
+	when GC_ROOT_SCAN
+		root_scan_phase()
+	when GC_MARK
+		incremental_mark_phase()
+	else
+		incremental_sweep_phase()
+```
+1.根查找阶段
+```
+root_scan_phase(){
+	for(r : $roots)
+		mark(*k)	//把白色涂成灰色
+	$gc_phase = GC_MARK
+}
+
+mark(obj){
+	if(obj.mark == FLASE)
+		obj.mark = TRUE
+		push(obj, $mark_stack)
+}
+	
+```
+2.标记阶段
+标记MARK_MAX个对象后就把CPU还给mutator继续跑。
+```
+incremental_mark_phase(){
+	for( i : 1..MARK_MAX)
+		if(is_empty($mark_stack) == FALSE)
+			obj = pop($mark_stack)
+			for(child in children(obj)
+				mark(*child)
+		else
+			for( r : $roots)
+				mark(*r)
+			while(is_empty($mark_stack) == FAlSE)
+				obj = pop($mark_stack)
+				for(child in children(obj))
+					mark(*child)
+	
+			$gc_phase = GC_SWEEP
+			$sweeping = $heap_start
+			return
+}
+```
+为了解决标记遗漏的问题，需要使用写入屏障。
+```
+write_barrier(obj, field, newobj){
+	if(newobj.mark == FALSE)
+		newobj.mark = TRUE
+		push(newobj, $mark_stack)
+	*field = newobj
+}
+				
+```
+3.清除阶段
+```
+incremental_sweep_phase(){
+	swept_count = 0
+	while(swept_count < SWEEP_MAX)
+		if($sweeping < $heap_end)
+			if($sweep.mark==TRUE)
+				$sweeping.mark = FALSE
+			else
+				$sweeping.next = $free_list
+				$free_list = $sweeping
+				$free_size +=$sweeping.size
+			$sweeping +=$sweeping.size
+			swept_count++
+		else
+			$gc_phase = GC_ROOT_SCAN
+			return
+}
+```
+**优点**
+显然，终于解决了mutator和gc之间可以交替进行，不需要一口气GC完耽搁程序太久的问题。
+**缺点**
+降低了吞吐量。只要用到写入屏障，就会增加额外负担。增量GC比不增量的会有很多的额外花费。
