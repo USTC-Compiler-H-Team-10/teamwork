@@ -100,9 +100,9 @@ GC算法分为两个阶段：全局并发标记、拷贝存活对象。
 
 ## Reference
 
-[G1垃圾收集器入门](http://blog.jobbole.com/109170/)
+[深入理解 Java G1 垃圾收集器](http://blog.jobbole.com/109170/)
 
-[Garbage-First Garbage Collection](http://delivery.acm.org/10.1145/1030000/1029879/p37-detlefs.pdf?ip=218.104.71.166&id=1029879&acc=ACTIVE%20SERVICE&key=BF85BBA5741FDC6E%2EA4F9C023AC60E700%2E4D4702B0C3E38B35%2E4D4702B0C3E38B35&CFID=847366002&CFTOKEN=67318103&__acm__=1514942336_217c73a37e4a71250c72703a511515a7)
+[Garbage-First Garbage Collection](https://dl.acm.org/citation.cfm?id=1029879)
 
 [深入理解JVM(3)——7种垃圾收集器](https://crowhawk.github.io/2017/08/15/jvm_3/)
 
