@@ -23,7 +23,6 @@
         Concurrent Mark Sweep
         并发标记-清除GC.
         使用更多CPU来保证应用的性能.
-        如果cpu资源充足,CMS是首选.
         压缩时STW.
     G1 GC
         针对较大的堆内存空间
@@ -41,7 +40,6 @@
     JDK9除了模块化系统以及JShell亮点之外,GC变化也很大:
     默认虚拟机HotSpot的默认GC从之前的Parallel GC更改为G1 GC.
     彻底去除了CMS的foreground模式,增量CMS,开始弃用(deprecate)剩下的CMS.
-    
 #### 2.1.2 HotSpot架构:
 
     获取源码之后得到如下图所示目录结构的jdk9的HotSpot源码:
@@ -51,38 +49,67 @@
     当然也有java的部分,负责调试的SA(Serviceability Agent)部分由Agent目录里的java实现.
     share目录里面是平台无关的共享代码,我们关注的gc以及memory模块,就在里面.
     JDK9 HotSpot中,方发区(metaspace)和堆被所有线程共享,栈和指令计数器为现成所私有.内存的自动管理及回收在堆中进行.
-    
-### 2.2 memory模块
-    memory模块主要由universe,tlab,allocation,
-#### 2.2.1 universe模块
+### 2.2 GC的初始化
+在memory/universe中做初始化准备
 
-    universe是memory模块中的命名空间.其中包含着复杂的vm已知类与对象,以及各种堆相关,内存错误相关,指针长度相关,调试相关的函数等
+    memory模块主要有universe, metaspace, heap等.
+    metaspace模块是memory中代码量最大的模块,属于非堆区,前身是jdk8之前PermGen的方法区.
+    由于我们关注的是自动内存管理部分,所以只关注gc相关的部分.
+    与gc关联较大的就是universe子模块.
+    在universe内部开始gc的初始化准备工作
+    universe是memory模块中的命名空间.其中包含着复杂的vm已知类与对象,以及各种堆相关,内存错误相关,指针长度相关,调试相关的函数等.
+    另外,universe中也实现了initialize_heap等开始初始化gc的工作.
 
 ![02_universe][3]
 
     universe::initialize_heap():
-        jvm堆的初始化,调用create_heap(),再设置本地TLAB最大值
+        jvm堆的初始化,调用create_heap()创建heap,
+        并初始化_collectedHeap,再初始化TLAB等
 ![03_initialize_heap][4]
 
     universe::create_heap():
         创建heap,通过create_heap_with_policy
         <G1CollectedHeap, G1CollectorPolicy>()等设置gc类别
+        可以看出,CMS和SerialGC用的CollectedHeap类型
+        都是GenCollectedHeap.
+        
 ![04_create_heap][5]
 
+        create_heap_with_policy中创建GC Policy对象,GC Heap对象
+        
+![06_create_heap_with_policy][6]
+
     universe::universe_post_init():
-        universe中代码行数最多(180+)的method,主要负责初始化后的一些操作,
+        另外值得一提的是,universe中代码行数最多(180+)的method,主要负责初始化后的一些操作,
         如加载异常等基础类,构建各种错误信息,安全检查等.
-![05_universe_post_init][6]
+        在runtime::init时调用.
+![05_universe_post_init][7]
+    
+### 2.3 GC-Shared部分
+shared部分是不同gc所共享的代码.
+#### 2.3.0 CollectedHeap
 
-#### 2.2.2 metaspace模块
+    位于gc/shared/collectedHeap中
+    是为了实现不同类型GC的heap而构造的抽象类,
+    包含了一个heap所必需的函数和组件.
+    
 
 
+#### 2.3.1 GenCollectedHeap
 
+    位于gc/shared/genCollectedHeap中.
+    genCollectedHeap是分代的CollectedHeap.
+    分为young generation和old generatioin.
+    
+#### 2.3.2 CollectorPolicy
 
+    位于gc/shared/collectorPolicy中.
+    
 
+### 2.4 Serial GC
 
-
-
+    Serail GC的Heap为GenCollectedHeap,位于gc/shared/genCollectedHeap中.
+    Serail GC的Policy为MarkSweepPolicy,位于gc/shared/collectorPolicy中.
 
 
 
@@ -91,6 +118,7 @@
 
 ​    
 ### **杂记-魔法**:
+
     宏-##:
         #define DEF_OOP(type)                   \
             class type##OopDesc;                \
@@ -104,9 +132,14 @@
         ALL_JAVA_THREADS(p){tc->do_thread(p);}
 
 ### **杂记-心得**:
-    1.阅读源码:
-        阅读源码,是为了理解源码的工作原理,了解各个组件如何协作发挥作用.而源码的"数据结构"最能直接反映组件的本质,反映依赖关系,反映状态条件.
 
+    1.阅读源码:
+        阅读源码,是为了理解源码的工作原理,了解各个组件如何协作发挥作用.而源码的"数据结构"最能直接反映组件的本质,反映依赖关系,反映状态条件.   
+    2.在查找某个函数或变量在哪里使用的时候,可以用
+        for i in $(ls); do echo $i; cat -n $i |grep G1CollectedHeap; done
+        的方法查找,高效方便.
+    3.开始可能会走很多弯路,比如不清楚某个模块,深入了解之后发现,跟自己想要探究的东西相关性很小.
+    
 ### links:
 1   [Java垃圾回收的介绍](https://javapapers.com/java/java-garbage-collection-introduction/)    
 2   [Java垃圾回收的工作机制](https://javapapers.com/java/how-java-garbage-collection-works/)
@@ -116,11 +149,13 @@
 6   [HotSpot实战](https://book.douban.com/subject/25847620/)  
 7   [Java堆的创建](http://www.importnew.com/17068.html)   
 8   [从持久代到metaspace](https://juejin.im/post/59e969ca51882561a05a3340)  
-
+9   [metaspace in java8](http://java-latte.blogspot.sg/2014/03/metaspace-in-java-8.html)  
 
 [1]: https://javapapers.com/java/how-java-garbage-collection-works/
 [2]: http://home.ustc.edu.cn/~jzw0222/01_%E6%A6%82%E8%A7%88.png
 [3]: https://raw.githubusercontent.com/leo2589/USTC/master/tmp/pic/02_universe.png
 [4]: https://raw.githubusercontent.com/leo2589/USTC/master/tmp/pic/03_initialize_heap.png
 [5]: https://raw.githubusercontent.com/leo2589/USTC/master/tmp/pic/04_create_heap.png
-[6]: https://raw.githubusercontent.com/leo2589/USTC/master/tmp/pic/05_universe_post_init.png
+[6]: https://raw.githubusercontent.com/leo2589/USTC/master/tmp/pic/06_create_heap_with_policy.png
+[7]: https://raw.githubusercontent.com/leo2589/USTC/master/tmp/pic/05_universe_post_init.png
+
