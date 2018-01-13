@@ -18,13 +18,15 @@ Parallel收集器是一个**并行**的**多线程新生代收集器**。可以�
 
 CMS等收集器关注重点在于尽可能地缩短垃圾收集时用户线程的停顿时间，而Parallel收集器关注如何达到一个**可控制的吞吐量**。也称之为**吞吐量优先**收集器。高吞吐量的收集器可以高效率地利用CPU时间，尽快完成程序运算任务，该收集器适合主要是后台运算而不需要太多交互的任务。运行过程如下。
 
-![](https://pic.yupoo.com/crowhawk/9a6b1249/b1800d45.png)
+![](https://pic.yupoo.com/crowhawk/fffcf9a2/f60599b2.png)
 
 此外，Parallel收集器具有自适应调节策略，即让虚拟机根据当前系统的性能监控信息，自动调节参数，如新生代的大小、晋升老年代的年龄等。可以通过`-XX:+UseAdaptiveSizePolicy`选项开通。
 
 使用Parallel收集器可以使用以下参数：`-XX:+UseParallelGC -XX:+UseParallelOldGC`。
 
 Parallel收集器有老年代收集器：Parallel Old 收集器，使用多线程和“标记-整理”算法，经常与Parallel收集器搭配使用，但出现时间晚于Parallel收集器。
+
+在JDK 9 之前Parallel 收集器是默认收集器。虽然它有高吞吐量，但可能会造成较高的暂停时间。JDK 9 用G1收集器代替了Parallel收集器，因为它有更好的并发性、更短的延迟时间（可能会导致降低吞吐量）、更少碎片化。
 
 ### 第三阶段：CMS收集器
 
