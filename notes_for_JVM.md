@@ -126,9 +126,9 @@ shared部分是不同gc所共享的代码.
     GCCause::is_tenured_allocation_failure_gc():
         返回是否OldGen分配失败引起.
     GCCause::is_allocation_failure_gc():
-        返回是否YoungGen分配失败引起.
+        返回是否分配失败引起.
     GCCause::to_string():
-        返回cause的字符串.
+        返回cause的字符串表示.
 #### 2.3.3 CollectorPolicy
 
     位于gc/shared/collectorPolicy中.
@@ -145,7 +145,8 @@ shared部分是不同gc所共享的代码.
     GenCollectorPolicy和MarkSweepPolicy也在相同的源文件,
     分别实现自己的method.
     
-    GenCollectorPolicy:
+#### 2.3.4 GenCollectorPolicy    
+
     GenCollectorPolicy::mem_allocate_work():
         分配制定大小的空间,根据参数is_tlab来判断分配空间的来源,是内存堆还是TLAB.
 ![11_1][12]
@@ -158,8 +159,23 @@ shared部分是不同gc所共享的代码.
     611行尝试可扩展内存时,是先尝试扩展oldGen的空间.
     最后,
     650,651行可以看出,触发gc的操作并不是由自身执行gc,
-    而是通过JVM操作指令执行.
-#### 2.3.4 GenCollectedHeap
+    而是通过JVM操作指令执行,GenCollectorPolicy只负责监听是否完成gc即可.
+    下面是VMThread::execute()
+![12_VMThread_execute_notify][15]
+
+    在虚拟机创建时就会创建一个单例原生线程VMThread。这个线程能派生出其他线程。同时，这个线程的主要的作用是维护一个vm操作队列(VMOperationQueue)，用于处理其他线程提交的vm operation，比如执行GC等。
+#### 2.3.5 MarkSweepPolicy
+
+    GenCollectorPolicy的子类.
+    MarkSweepPolicy的流程:
+        标记active对象,清理非active对象,
+        尽量把gc的范围控制在youngGen,因为清理youngGen相对容易,
+        只需要把eden/from(也就是s0)中的active对象复制到to(也就是s1)/oldGen,
+        然后再清除整个eden/from即可.
+        而清理oldGen,没有其他区可以复制过去,所以只能在oldGen内部通过移动压缩的方法腾出空间,而这样过程比较复杂.
+        
+        
+#### 2.3.6 GenCollectedHeap
 
     位于gc/shared/genCollectedHeap中.
     genCollectedHeap是分代的CollectedHeap.
@@ -178,10 +194,10 @@ shared部分是不同gc所共享的代码.
 ![08_genCollectedHeap_申请空间][9]       
 
     分配内存:
-    CollectedHeap::mem_allocate():
+    GenCollectedHeap::mem_allocate():
         内存堆中分配指定大小的内存块,不适用于TLAB,
         失败则抛出OutOfMemory异常.
-    CollectedHeap::allocate_new_tlab():
+    GenCollectedHeap::allocate_new_tlab():
         为某一线程申请一块本地分配缓冲区,
         所有TLAB的分配都用这个method.
     这两者都是通过
@@ -200,7 +216,6 @@ shared部分是不同gc所共享的代码.
 
 
 
-​    
 ### **杂记-魔法**:
 
     宏-##:
@@ -249,3 +264,4 @@ shared部分是不同gc所共享的代码.
 [12]: https://raw.githubusercontent.com/leo2589/USTC/master/tmp/pic/11_collectorPolicy1.png
 [13]: https://raw.githubusercontent.com/leo2589/USTC/master/tmp/pic/11_collectorPolicy2.png
 [14]: https://raw.githubusercontent.com/leo2589/USTC/master/tmp/pic/11_collectorPolicy3.png
+[15]: https://raw.githubusercontent.com/leo2589/USTC/master/tmp/pic/12_VMThread_execute_notify.png
