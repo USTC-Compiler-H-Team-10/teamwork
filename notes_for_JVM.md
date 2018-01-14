@@ -272,7 +272,7 @@ shared部分是不同gc所共享的代码,也是Serial GC所依赖的部分.
         调整所有active对象指针.
 ![22_GenMarkSweep_mark_sweep_phase3][27]
 
-    GenMarkSweep::mark_sweep_phase2:
+    GenMarkSweep::mark_sweep_phase4:
         移动所有active对象到新的位置
 ![23_GenMarkSweep_mark_sweep_phase4][28]
 
